@@ -65,27 +65,34 @@ func (e *KittyExecutor) TypeText(ctx context.Context, text string) error {
 	return nil
 }
 
-// SendKey sends a keystroke using kitten @ send-key
-func (e *KittyExecutor) SendKey(ctx context.Context, key protocol.Key, modifiers []protocol.Modifier, repeat int) error {
+// BuildKeySpec builds the kitty key specification (e.g., "ctrl+shift+a")
+// returns empty string if key is unknown
+func BuildKeySpec(key protocol.Key, modifiers []protocol.Modifier) string {
 	keyname, ok := KittyKeyNames[key]
 	if !ok {
-		// unknown key, skip silently
-		return nil
+		return ""
 	}
 
-	// build key spec with modifiers: ctrl+shift+a
-	var keyspec string
-	if len(modifiers) > 0 {
-		modNames := make([]string, 0, len(modifiers))
-		for _, mod := range modifiers {
-			modName, ok := KittyModifierNames[mod]
-			if ok {
-				modNames = append(modNames, modName)
-			}
+	if len(modifiers) == 0 {
+		return keyname
+	}
+
+	modNames := make([]string, 0, len(modifiers))
+	for _, mod := range modifiers {
+		modName, ok := KittyModifierNames[mod]
+		if ok {
+			modNames = append(modNames, modName)
 		}
-		keyspec = strings.Join(append(modNames, keyname), "+")
-	} else {
-		keyspec = keyname
+	}
+	return strings.Join(append(modNames, keyname), "+")
+}
+
+// SendKey sends a keystroke using kitten @ send-key
+func (e *KittyExecutor) SendKey(ctx context.Context, key protocol.Key, modifiers []protocol.Modifier, repeat int) error {
+	keyspec := BuildKeySpec(key, modifiers)
+	if keyspec == "" {
+		// unknown key, skip silently
+		return nil
 	}
 
 	args := []string{"send-key"}

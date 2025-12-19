@@ -52,37 +52,53 @@ func (e *MacOSExecutor) TypeText(ctx context.Context, text string) error {
 	return nil
 }
 
-// SendKey sends a keystroke using System Events key code
-func (e *MacOSExecutor) SendKey(ctx context.Context, key protocol.Key, modifiers []protocol.Modifier, repeat int) error {
+// BuildModifierString builds the AppleScript modifier clause
+// returns empty string if no modifiers
+func BuildModifierString(modifiers []protocol.Modifier) string {
+	if len(modifiers) == 0 {
+		return ""
+	}
+
+	modParts := make([]string, 0, len(modifiers))
+	for _, mod := range modifiers {
+		switch mod {
+		case protocol.ModCtrl:
+			modParts = append(modParts, "control down")
+		case protocol.ModAlt:
+			modParts = append(modParts, "option down")
+		case protocol.ModShift:
+			modParts = append(modParts, "shift down")
+		}
+	}
+	return "{" + strings.Join(modParts, ", ") + "}"
+}
+
+// BuildKeyScript builds the full AppleScript for a key code
+// returns empty string if key is unknown
+func BuildKeyScript(key protocol.Key, modifiers []protocol.Modifier) string {
 	keycode, ok := MacKeycodes[key]
 	if !ok {
+		return ""
+	}
+
+	modStr := BuildModifierString(modifiers)
+	if modStr != "" {
+		return fmt.Sprintf(`tell application "System Events" to key code %d using %s`, keycode, modStr)
+	}
+	return fmt.Sprintf(`tell application "System Events" to key code %d`, keycode)
+}
+
+// SendKey sends a keystroke using System Events key code
+func (e *MacOSExecutor) SendKey(ctx context.Context, key protocol.Key, modifiers []protocol.Modifier, repeat int) error {
+	script := BuildKeyScript(key, modifiers)
+	if script == "" {
 		// unknown key, skip silently
 		return nil
 	}
 
-	// build modifier string for applescript
-	var script string
-	if len(modifiers) > 0 {
-		modParts := make([]string, 0, len(modifiers))
-		for _, mod := range modifiers {
-			switch mod {
-			case protocol.ModCtrl:
-				modParts = append(modParts, "control down")
-			case protocol.ModAlt:
-				modParts = append(modParts, "option down")
-			case protocol.ModShift:
-				modParts = append(modParts, "shift down")
-			}
-		}
-		modStr := "{" + strings.Join(modParts, ", ") + "}"
-		script = fmt.Sprintf(`tell application "System Events" to key code %d using %s`, keycode, modStr)
-	} else {
-		script = fmt.Sprintf(`tell application "System Events" to key code %d`, keycode)
-	}
-
 	for i := 0; i < repeat; i++ {
 		if err := runOsascript(ctx, script); err != nil {
-			return fmt.Errorf("key code %d: %w", keycode, err)
+			return fmt.Errorf("key code: %w", err)
 		}
 	}
 

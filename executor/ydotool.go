@@ -28,19 +28,27 @@ func runYdotool(ctx context.Context, args ...string) error {
 	return cmd.Run()
 }
 
+// SplitBackslashes splits text for ydotool escaping
+// returns the segments to type and whether backslash handling is needed
+func SplitBackslashes(text string) ([]string, bool) {
+	if !strings.Contains(text, "\\") {
+		return []string{text}, false
+	}
+	return strings.Split(text, "\\"), true
+}
+
 // TypeText types text using ydotool type
 func (e *YdotoolExecutor) TypeText(ctx context.Context, text string) error {
 	if text == "" {
 		return nil
 	}
 
-	// ydotool interprets backslash as escape, so we need to handle it specially
-	if !strings.Contains(text, "\\") {
+	parts, hasBackslash := SplitBackslashes(text)
+	if !hasBackslash {
 		return runYdotool(ctx, "type", "--key-delay=0", "--key-hold=0", text)
 	}
 
-	// split on backslashes and type segments with key presses between
-	parts := strings.Split(text, "\\")
+	// type segments with backslash key presses between
 	for i, part := range parts {
 		if part != "" {
 			if err := runYdotool(ctx, "type", "--key-delay=0", "--key-hold=0", part); err != nil {
@@ -59,11 +67,11 @@ func (e *YdotoolExecutor) TypeText(ctx context.Context, text string) error {
 	return nil
 }
 
-// SendKey sends a keystroke using ydotool key
-func (e *YdotoolExecutor) SendKey(ctx context.Context, key protocol.Key, modifiers []protocol.Modifier, repeat int) error {
+// BuildKeySequence builds the ydotool key sequence for a keystroke
+// returns nil if the key is unknown
+func BuildKeySequence(key protocol.Key, modifiers []protocol.Modifier) []string {
 	keycode, ok := LinuxKeycodes[key]
 	if !ok {
-		// unknown key, skip silently
 		return nil
 	}
 
@@ -90,9 +98,20 @@ func (e *YdotoolExecutor) SendKey(ctx context.Context, key protocol.Key, modifie
 		}
 	}
 
+	return seq
+}
+
+// SendKey sends a keystroke using ydotool key
+func (e *YdotoolExecutor) SendKey(ctx context.Context, key protocol.Key, modifiers []protocol.Modifier, repeat int) error {
+	seq := BuildKeySequence(key, modifiers)
+	if seq == nil {
+		// unknown key, skip silently
+		return nil
+	}
+
 	for i := 0; i < repeat; i++ {
 		if err := runYdotool(ctx, append([]string{"key"}, seq...)...); err != nil {
-			return fmt.Errorf("key %d: %w", keycode, err)
+			return fmt.Errorf("key: %w", err)
 		}
 	}
 
