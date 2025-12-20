@@ -66,8 +66,59 @@ func runClient(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("yapatype client v%s\n", version)
 	fmt.Printf("name: %s\n", cfg.Client.Name)
-	fmt.Printf("connecting to %s\n", cfg.Client.ServerURL)
 
-	// TODO: run client
-	return nil
+	// create executor
+	exec, err := executor.NewExecutor(&cfg.Client)
+	if err != nil {
+		return fmt.Errorf("create executor: %w", err)
+	}
+	fmt.Printf("executor: %s\n", exec.Name())
+
+	// create client
+	c := client.New(
+		cfg.Client.ServerURL,
+		cfg.Client.Name,
+		runtime.GOOS,
+		exec,
+	)
+
+	// load .whisper-prompt
+	prompt := loadPromptFile()
+	if prompt != "" {
+		fmt.Printf("loaded .whisper-prompt (%d chars)\n", len(prompt))
+	}
+
+	// signal handling
+	ctx, cancel := context.WithCancel(context.Background())
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		fmt.Println("\nshutting down...")
+		cancel()
+		c.Stop()
+	}()
+
+	// send prompt after first connection
+	if prompt != "" {
+		go func() {
+			// wait briefly for connection to establish
+			time.Sleep(500 * time.Millisecond)
+			if err := c.SendPrompt(ctx, prompt); err != nil {
+				// not critical, just log it
+				fmt.Printf("failed to send prompt: %v\n", err)
+			}
+		}()
+	}
+
+	return c.Run(ctx)
+}
+
+// loadPromptFile reads .whisper-prompt from current directory
+func loadPromptFile() string {
+	data, err := os.ReadFile(".whisper-prompt")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
