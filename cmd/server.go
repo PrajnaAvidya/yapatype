@@ -1,9 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/PrajnaAvidya/yapatype/config"
+	"github.com/PrajnaAvidya/yapatype/server"
 	"github.com/spf13/cobra"
 )
 
@@ -55,8 +60,20 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("yapatype server v%s\n", version)
-	fmt.Printf("listening on %s:%d\n", cfg.Server.Host, cfg.Server.Port)
 
-	// TODO: run server
-	return nil
+	// create server
+	srv := server.NewServer(cfg.Server.Host, cfg.Server.Port, cfg.Server.Aliases)
+
+	// signal handling
+	ctx, cancel := context.WithCancel(context.Background())
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		fmt.Println("\nshutting down...")
+		cancel()
+		srv.Stop()
+	}()
+
+	return srv.Run(ctx)
 }
