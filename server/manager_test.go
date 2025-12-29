@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PrajnaAvidya/yapatype/protocol"
 	"github.com/gorilla/websocket"
 )
 
@@ -364,5 +365,73 @@ func TestResolveAlias(t *testing.T) {
 				t.Errorf("resolveAlias(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestLastTypeText(t *testing.T) {
+	m := NewClientManager(nil)
+
+	// initially nil
+	if m.LastTypeText() != nil {
+		t.Error("LastTypeText should be nil initially")
+	}
+
+	// set and retrieve
+	tt := &protocol.TypeText{Type: "type", Text: "hello"}
+	m.lastTypeText = tt
+
+	got := m.LastTypeText()
+	if got != tt {
+		t.Error("LastTypeText should return the set value")
+	}
+	if got.Text != "hello" {
+		t.Errorf("LastTypeText().Text = %q, want 'hello'", got.Text)
+	}
+}
+
+func TestAutoSelectTarget(t *testing.T) {
+	m := NewClientManager(nil)
+
+	// no clients - should set to empty
+	m.activeTarget = "old"
+	m.autoSelectTarget()
+	if m.activeTarget != "" {
+		t.Errorf("autoSelectTarget with no clients should set to empty, got %q", m.activeTarget)
+	}
+
+	// add unregistered client - still no selection
+	conn1 := &websocket.Conn{}
+	m.clients[conn1] = &ConnectedClient{Conn: conn1, Name: "unregistered", Registered: false}
+	m.autoSelectTarget()
+	if m.activeTarget != "" {
+		t.Error("autoSelectTarget should skip unregistered clients")
+	}
+
+	// add registered client - should select it
+	conn2 := &websocket.Conn{}
+	m.clients[conn2] = &ConnectedClient{Conn: conn2, Name: "registered", Registered: true}
+	m.autoSelectTarget()
+	if m.activeTarget != "registered" {
+		t.Errorf("autoSelectTarget should select 'registered', got %q", m.activeTarget)
+	}
+}
+
+func TestRemoveTriggersAutoSelect(t *testing.T) {
+	m := NewClientManager(nil)
+
+	// add two registered clients
+	conn1 := &websocket.Conn{}
+	m.clients[conn1] = &ConnectedClient{Conn: conn1, Name: "client1", Registered: true}
+
+	conn2 := &websocket.Conn{}
+	m.clients[conn2] = &ConnectedClient{Conn: conn2, Name: "client2", Registered: true}
+
+	m.activeTarget = "client1"
+
+	// remove active target - should auto-select client2
+	m.Remove(conn1)
+
+	if m.activeTarget != "client2" {
+		t.Errorf("after removing active target, should auto-select remaining client, got %q", m.activeTarget)
 	}
 }
