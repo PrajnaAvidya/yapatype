@@ -1,13 +1,9 @@
 package transcribe
 
 import (
-	"encoding/json"
-	"os"
 	"regexp"
 	"strings"
 	"sync"
-
-	vosk "github.com/alphacep/vosk-api/go/vosk"
 )
 
 // DigitToWord maps digits to word equivalents for grammar
@@ -47,11 +43,18 @@ var BaseGrammar = []string{
 // VoskEngine handles fast command recognition with grammar constraints
 type VoskEngine struct {
 	modelPath   string
-	model       *vosk.VoskModel
+	recognizer  VoskRecognizer
 	available   bool
 	clientNames map[string]bool
 	aliases     map[string]bool
 	mu          sync.RWMutex
+}
+
+// VoskRecognizer interface for vosk recognition (implemented by voskRecognizerImpl)
+type VoskRecognizer interface {
+	Setup(modelPath string) error
+	Transcribe(audioPath string, grammar []string) (string, error)
+	Cleanup()
 }
 
 // NewVoskEngine creates a new VoskEngine
@@ -63,19 +66,27 @@ func NewVoskEngine(modelPath string) *VoskEngine {
 	}
 }
 
+// SetRecognizer sets the recognizer implementation (for testing or dependency injection)
+func (v *VoskEngine) SetRecognizer(rec VoskRecognizer) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.recognizer = rec
+}
+
 // Setup loads the vosk model (blocking)
 func (v *VoskEngine) Setup() error {
-	// suppress vosk logging
-	os.Setenv("VOSK_LOG_LEVEL", "-1")
-	vosk.SetLogLevel(-1)
+	v.mu.Lock()
+	if v.recognizer == nil {
+		v.recognizer = NewVoskRecognizer()
+	}
+	rec := v.recognizer
+	v.mu.Unlock()
 
-	model, err := vosk.NewModel(v.modelPath)
-	if err != nil {
+	if err := rec.Setup(v.modelPath); err != nil {
 		return err
 	}
 
 	v.mu.Lock()
-	v.model = model
 	v.available = true
 	v.mu.Unlock()
 
@@ -131,8 +142,8 @@ func getNameVariants(name string) []string {
 	return variants
 }
 
-// buildGrammar constructs the full grammar including clients and aliases
-func (v *VoskEngine) buildGrammar() []string {
+// BuildGrammar constructs the full grammar including clients and aliases
+func (v *VoskEngine) BuildGrammar() []string {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
@@ -142,10 +153,10 @@ func (v *VoskEngine) buildGrammar() []string {
 	// add client names with targeting variants
 	for name := range v.clientNames {
 		for _, variant := range getNameVariants(name) {
-			grammar = append(grammar, variant)               // bare name
-			grammar = append(grammar, "target "+variant)     // target name
-			grammar = append(grammar, "switch "+variant)     // switch name
-			grammar = append(grammar, "control "+variant)    // control name
+			grammar = append(grammar, variant)            // bare name
+			grammar = append(grammar, "target "+variant)  // target name
+			grammar = append(grammar, "switch "+variant)  // switch name
+			grammar = append(grammar, "control "+variant) // control name
 		}
 	}
 
@@ -164,74 +175,23 @@ func (v *VoskEngine) buildGrammar() []string {
 // Returns lowercase transcription or empty string
 func (v *VoskEngine) Transcribe(audioPath string) (string, error) {
 	v.mu.RLock()
-	if !v.available || v.model == nil {
+	if !v.available || v.recognizer == nil {
 		v.mu.RUnlock()
 		return "", nil
 	}
-	model := v.model
+	rec := v.recognizer
 	v.mu.RUnlock()
 
-	// open audio file
-	file, err := os.Open(audioPath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	// skip wav header (44 bytes)
-	_, err = file.Seek(44, 0)
-	if err != nil {
-		return "", err
-	}
-
-	// build grammar JSON
-	grammar := v.buildGrammar()
-	grammarJSON, err := json.Marshal(grammar)
-	if err != nil {
-		return "", err
-	}
-
-	// create recognizer with grammar
-	rec, err := vosk.NewRecognizerGrm(model, 16000, string(grammarJSON))
-	if err != nil {
-		return "", err
-	}
-	defer rec.Free()
-
-	// process audio in chunks
-	buf := make([]byte, 4000)
-	for {
-		n, err := file.Read(buf)
-		if n == 0 {
-			break
-		}
-		if err != nil {
-			break
-		}
-		rec.AcceptWaveform(buf[:n])
-	}
-
-	// get final result
-	result := rec.FinalResult()
-
-	// parse JSON result
-	var res struct {
-		Text string `json:"text"`
-	}
-	if err := json.Unmarshal([]byte(result), &res); err != nil {
-		return "", nil
-	}
-
-	return strings.TrimSpace(res.Text), nil
+	grammar := v.BuildGrammar()
+	return rec.Transcribe(audioPath, grammar)
 }
 
 // Cleanup releases resources
 func (v *VoskEngine) Cleanup() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	if v.model != nil {
-		v.model.Free()
-		v.model = nil
+	if v.recognizer != nil {
+		v.recognizer.Cleanup()
 	}
 	v.available = false
 }
