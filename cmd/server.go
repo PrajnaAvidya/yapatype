@@ -61,11 +61,25 @@ func runServer(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("yapatype server v%s\n", version)
 
-	// create server
-	srv := server.NewServer(cfg.Server.Host, cfg.Server.Port, cfg.Server.Aliases)
+	// signal handling context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// wait for specific microphone if configured
+	var device string
+	if cfg.Server.Microphone != nil {
+		var err error
+		device, err = server.WaitForMicrophone(ctx, *cfg.Server.Microphone)
+		if err != nil {
+			return fmt.Errorf("microphone wait: %w", err)
+		}
+		fmt.Printf("using microphone: %s\n", device)
+	}
+
+	// create main server
+	srv := server.NewMainServer(&cfg.Server, device)
 
 	// signal handling
-	ctx, cancel := context.WithCancel(context.Background())
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
