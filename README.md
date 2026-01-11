@@ -10,9 +10,23 @@ Runs as a server/client architecture over WebSocket. The server captures audio, 
 
 ## Installation
 
+Download the latest archive for your platform from [GitHub Releases](https://github.com/PrajnaAvidya/yapatype/releases):
+
+- `yapatype-linux-amd64.tar.gz` - Linux
+- `yapatype-windows-amd64.zip` - Windows
+- `yapatype-darwin-arm64.tar.gz` - macOS (Apple Silicon)
+
+Extract and run. Or build from source: `go build -o yapatype .`
+
+### macOS Gatekeeper
+
+macOS blocks unsigned binaries. After extracting, remove the quarantine attribute:
+
 ```bash
-go build -o yapatype .
+xattr -d com.apple.quarantine yapatype
 ```
+
+Or right-click the binary → Open → Open Anyway.
 
 ### System Dependencies
 

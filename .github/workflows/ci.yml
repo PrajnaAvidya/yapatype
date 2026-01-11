@@ -29,12 +29,21 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Build binaries
+      - name: Build and package
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -o dist/yapatype-linux-amd64 .
-          GOOS=windows GOARCH=amd64 go build -o dist/yapatype-windows-amd64.exe .
-          GOOS=darwin GOARCH=arm64 go build -o dist/yapatype-darwin-arm64 .
+
+          GOOS=linux GOARCH=amd64 go build -o yapatype .
+          tar -czvf dist/yapatype-linux-amd64.tar.gz yapatype
+          rm yapatype
+
+          GOOS=darwin GOARCH=arm64 go build -o yapatype .
+          tar -czvf dist/yapatype-darwin-arm64.tar.gz yapatype
+          rm yapatype
+
+          GOOS=windows GOARCH=amd64 go build -o yapatype.exe .
+          zip dist/yapatype-windows-amd64.zip yapatype.exe
+          rm yapatype.exe
 
       - name: Create release
         uses: softprops/action-gh-release@v2
