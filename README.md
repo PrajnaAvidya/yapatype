@@ -36,6 +36,32 @@ Or right-click the binary → Open → Open Anyway.
 - **ydotool** (linux): keystroke injection
 - **kitty** (linux, optional): kitty terminal remote control
 
+### Models
+
+yapatype requires speech recognition models. Use the Makefile for easy setup:
+
+```bash
+# Download whisper model (required) - options: tiny, small, base, medium
+make setup-whisper WHISPER_MODEL=small
+
+# Download vosk library + model (optional, macOS only)
+make setup-vosk
+
+# Or download both at once
+make setup WHISPER_MODEL=small
+```
+
+**Whisper models** (English-only, from [whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp)):
+
+| Model | Size | Notes |
+|-------|------|-------|
+| tiny.en | 75MB | Fastest, lower accuracy |
+| base.en | 142MB | Balanced |
+| small.en | 466MB | Recommended |
+| medium.en | 1.5GB | Best accuracy, slower |
+
+**Vosk** enables fast command recognition for short utterances (<1.2s). Without vosk, all transcription uses whisper (slightly slower for commands but works fine).
+
 ## Usage
 
 ### Server
@@ -114,7 +140,7 @@ Optional config at `~/.config/yapatype/config.json`:
     "host": "0.0.0.0",
     "port": 9999,
     "whisper_cli": "/usr/bin/whisper-cli",
-    "model": "models/ggml-tiny.en.bin",
+    "model": "models/ggml-small.en.bin",
     "vosk_model": "models/vosk-model-small-en-us",
     "sounds": { "enabled": true },
     "client_aliases": { "focused": "desktop-ydotool" }
@@ -131,8 +157,14 @@ Optional config at `~/.config/yapatype/config.json`:
 
 ```bash
 # run tests
-go test ./...
+make test
 
-# build
-go build -o yapatype .
+# build without vosk (whisper only)
+make build
+
+# build with vosk support (macOS)
+# requires: make setup-vosk first
+make build-vosk
 ```
+
+The vosk build handles CGO flags and fixes the runtime library path automatically. If you build manually with `go build -tags vosk`, you'll need to set `CGO_CFLAGS`, `CGO_LDFLAGS`, and fix the dylib rpath with `install_name_tool`.

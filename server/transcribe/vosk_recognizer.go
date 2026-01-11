@@ -61,7 +61,7 @@ func (r *voskRecognizerImpl) Transcribe(audioPath string, grammar []string) (str
 	}
 
 	// create recognizer with grammar
-	rec, err := vosk.NewRecognizerGrm(r.model, 16000, string(grammarJSON))
+	rec, err := vosk.NewRecognizerGrm(r.model, 16000, grammarJSON)
 	if err != nil {
 		return "", err
 	}
