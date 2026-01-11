@@ -30,11 +30,55 @@ Or right-click the binary → Open → Open Anyway.
 
 ### System Dependencies
 
-- **sox**: audio capture
-- **whisper-cli**: speech transcription (whisper.cpp)
-- **vosk** (optional): fast recognition for short commands
-- **ydotool** (linux): keystroke injection
-- **kitty** (linux, optional): kitty terminal remote control
+#### macOS
+
+```bash
+# audio capture
+brew install sox
+
+# whisper.cpp (speech transcription)
+brew install whisper-cpp
+```
+
+#### Ubuntu/Debian
+
+```bash
+# audio capture + keystroke injection
+sudo apt install sox ydotool
+
+# whisper.cpp (build from source)
+git clone https://github.com/ggerganov/whisper.cpp
+cd whisper.cpp
+make
+sudo cp main /usr/local/bin/whisper-cli
+```
+
+#### Fedora
+
+```bash
+# audio capture + keystroke injection
+sudo dnf install sox ydotool
+
+# whisper.cpp (build from source)
+git clone https://github.com/ggerganov/whisper.cpp
+cd whisper.cpp
+make
+sudo cp main /usr/local/bin/whisper-cli
+```
+
+#### Arch
+
+```bash
+sudo pacman -S sox ydotool whisper.cpp
+```
+
+#### Optional: kitty terminal
+
+If you want to send keystrokes to an unfocused [kitty](https://sw.kovidgoyal.net/kitty/) terminal, start kitty with remote control enabled:
+
+```bash
+kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty.sock
+```
 
 ### Models
 
