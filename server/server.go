@@ -298,7 +298,7 @@ func (s *MainServer) handleTranscription(text string) {
 			// exit dictation mode
 			s.dictationMode = false
 			fmt.Println("   [dictation mode OFF]")
-			s.sounds.PlayDictationToggle()
+			s.sounds.Say("commands active")
 			return
 		}
 		// type as-is with trailing space
@@ -317,7 +317,7 @@ func (s *MainServer) handleTranscription(text string) {
 		targetName := strings.ReplaceAll(match[1], " ", "")
 		targetName = strings.TrimRight(targetName, ".,!?")
 		if s.wsServer.Manager.SetTarget(targetName) {
-			s.sounds.PlayCommandSuccess()
+			s.sounds.Say("targeting " + targetName)
 		} else {
 			fmt.Printf("   unknown target: %s\n", targetName)
 			fmt.Printf("   available: %v\n", s.wsServer.Manager.ListClients())
@@ -332,7 +332,7 @@ func (s *MainServer) handleTranscription(text string) {
 		secondWord := strings.TrimRight(words[1], ".,!?")
 		if s.wsServer.Manager.IsValidTarget(secondWord) {
 			if s.wsServer.Manager.SetTarget(secondWord) {
-				s.sounds.PlayCommandSuccess()
+				s.sounds.Say("targeting " + secondWord)
 				return
 			}
 		}
@@ -343,7 +343,7 @@ func (s *MainServer) handleTranscription(text string) {
 	bareName = strings.TrimRight(bareName, ".,!?")
 	if s.wsServer.Manager.IsValidTarget(bareName) {
 		if s.wsServer.Manager.SetTarget(bareName) {
-			s.sounds.PlayCommandSuccess()
+			s.sounds.Say("targeting " + bareName)
 			return
 		}
 	}
@@ -386,13 +386,13 @@ func (s *MainServer) dispatch(result commands.ParseResult) {
 		case commands.PauseCommandsAction:
 			s.dictationMode = true
 			fmt.Println("   [dictation mode ON]")
-			s.sounds.PlayDictationToggle()
+			s.sounds.Say("dictation mode")
 			return
 
 		case commands.ResumeCommandsAction:
 			s.dictationMode = false
 			fmt.Println("   [dictation mode OFF]")
-			s.sounds.PlayDictationToggle()
+			s.sounds.Say("commands active")
 			return
 		}
 	}

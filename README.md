@@ -66,12 +66,6 @@ make
 sudo cp main /usr/local/bin/whisper-cli
 ```
 
-#### Arch
-
-```bash
-sudo pacman -S sox ydotool whisper.cpp
-```
-
 #### Optional: kitty terminal
 
 If you want to send keystrokes to an unfocused [kitty](https://sw.kovidgoyal.net/kitty/) terminal, start kitty with remote control enabled:

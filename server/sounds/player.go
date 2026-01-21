@@ -92,3 +92,14 @@ func (p *Player) PlayCommandWarning() {
 func (p *Player) PlayDictationToggle() {
 	p.play(p.config.DictationToggle)
 }
+
+// Say speaks text using system TTS (macOS only)
+func (p *Player) Say(text string) {
+	if !p.config.Enabled || runtime.GOOS != "darwin" {
+		return
+	}
+	go func() {
+		cmd := exec.Command("say", text)
+		_ = cmd.Run()
+	}()
+}
