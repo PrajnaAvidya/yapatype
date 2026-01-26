@@ -314,3 +314,38 @@ func TestParseUnknownType(t *testing.T) {
 		t.Error("expected error for unknown type")
 	}
 }
+
+func TestNewSendKeyNilModifiers(t *testing.T) {
+	msg := NewSendKey(KeyEnter, nil, 1)
+
+	if msg.Modifiers == nil {
+		t.Error("nil modifiers should become empty slice")
+	}
+	if len(msg.Modifiers) != 0 {
+		t.Errorf("modifiers length = %d, want 0", len(msg.Modifiers))
+	}
+}
+
+func TestNewSendKeyRepeatZero(t *testing.T) {
+	msg := NewSendKey(KeyEnter, nil, 0)
+
+	if msg.Repeat != 1 {
+		t.Errorf("repeat 0 should become 1, got %d", msg.Repeat)
+	}
+}
+
+func TestNewSendKeyRepeatNegative(t *testing.T) {
+	msg := NewSendKey(KeyEnter, nil, -5)
+
+	if msg.Repeat != 1 {
+		t.Errorf("negative repeat should become 1, got %d", msg.Repeat)
+	}
+}
+
+func TestNewSendKeyRepeatValid(t *testing.T) {
+	msg := NewSendKey(KeyTab, []Modifier{ModCtrl}, 3)
+
+	if msg.Repeat != 3 {
+		t.Errorf("repeat = %d, want 3", msg.Repeat)
+	}
+}
