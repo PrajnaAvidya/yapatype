@@ -9,10 +9,11 @@ import (
 
 // SoundsConfig holds audio feedback settings
 type SoundsConfig struct {
-	Enabled        bool    `json:"enabled"`
-	CommandSuccess *string `json:"command_success"`
-	CommandWarning *string `json:"command_warning"`
-	Ready          *string `json:"ready"`
+	Enabled               bool    `json:"enabled"`
+	VoiceAcknowledgements bool    `json:"voice_acknowledgements"`
+	CommandSuccess        *string `json:"command_success"`
+	CommandWarning        *string `json:"command_warning"`
+	Ready                 *string `json:"ready"`
 }
 
 // ServerConfig holds server settings
@@ -44,10 +45,11 @@ type Config struct {
 // DefaultSounds returns default sounds config
 func DefaultSounds() SoundsConfig {
 	return SoundsConfig{
-		Enabled:        true,
-		CommandSuccess: nil,
-		CommandWarning: nil,
-		Ready:          nil,
+		Enabled:               true,
+		VoiceAcknowledgements: true,
+		CommandSuccess:        nil,
+		CommandWarning:        nil,
+		Ready:                 nil,
 	}
 }
 

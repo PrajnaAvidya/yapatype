@@ -23,6 +23,7 @@ var (
 	serverHost    string
 	serverConfig  string
 	serverNoSound bool
+	serverNoVoice bool
 	serverMic     string
 )
 
@@ -31,6 +32,7 @@ func init() {
 	serverCmd.Flags().StringVar(&serverHost, "host", "", "websocket server host (default: 0.0.0.0)")
 	serverCmd.Flags().StringVarP(&serverConfig, "config", "c", "", "config file path")
 	serverCmd.Flags().BoolVar(&serverNoSound, "no-sound", false, "disable audio feedback sounds")
+	serverCmd.Flags().BoolVar(&serverNoVoice, "no-voice", false, "disable voice acknowledgements (chime only)")
 	serverCmd.Flags().StringVar(&serverMic, "mic", "", "microphone to use (substring match)")
 	// alias for --mic
 	serverCmd.Flags().StringVar(&serverMic, "microphone", "", "microphone to use (substring match)")
@@ -54,6 +56,9 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 	if serverNoSound {
 		cfg.Server.Sounds.Enabled = false
+	}
+	if serverNoVoice {
+		cfg.Server.Sounds.VoiceAcknowledgements = false
 	}
 	if serverMic != "" {
 		cfg.Server.Microphone = &serverMic

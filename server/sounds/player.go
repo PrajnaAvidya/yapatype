@@ -22,11 +22,12 @@ var defaultSoundsMacOS = map[string]string{
 
 // Config holds sound configuration
 type Config struct {
-	Enabled         bool   `json:"enabled"`
-	Ready           string `json:"ready"`
-	CommandSuccess  string `json:"command_success"`
-	CommandWarning  string `json:"command_warning"`
-	DictationToggle string `json:"dictation_toggle"`
+	Enabled               bool   `json:"enabled"`
+	VoiceAcknowledgements bool   `json:"voice_acknowledgements"`
+	Ready                 string `json:"ready"`
+	CommandSuccess        string `json:"command_success"`
+	CommandWarning        string `json:"command_warning"`
+	DictationToggle       string `json:"dictation_toggle"`
 }
 
 // DefaultConfig returns platform-specific default sound config
@@ -37,11 +38,12 @@ func DefaultConfig() Config {
 	}
 
 	return Config{
-		Enabled:         true,
-		Ready:           defaults["ready"],
-		CommandSuccess:  defaults["command_success"],
-		CommandWarning:  defaults["command_warning"],
-		DictationToggle: defaults["dictation_toggle"],
+		Enabled:               true,
+		VoiceAcknowledgements: true,
+		Ready:                 defaults["ready"],
+		CommandSuccess:        defaults["command_success"],
+		CommandWarning:        defaults["command_warning"],
+		DictationToggle:       defaults["dictation_toggle"],
 	}
 }
 
@@ -98,6 +100,14 @@ func (p *Player) Say(text string) {
 	if !p.config.Enabled || runtime.GOOS != "darwin" {
 		return
 	}
+
+	// play chime first
+	p.PlayCommandSuccess()
+
+	if !p.config.VoiceAcknowledgements {
+		return
+	}
+
 	go func() {
 		cmd := exec.Command("say", text)
 		_ = cmd.Run()

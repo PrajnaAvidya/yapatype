@@ -26,6 +26,9 @@ var resumePattern = regexp.MustCompile(`^(resume\s?commands?|start\s?commands?)$
 // click sound pattern to skip
 var clickPattern = regexp.MustCompile(`(?i)^click[, ]*\.?$`)
 
+// whisper hallucination during silence
+var zeorangerPattern = regexp.MustCompile(`(?i)zeoranger`)
+
 // default whisper prompt
 const defaultPrompt = "Commands: newline, enter, send it, escape, tab, slash, backspace."
 
@@ -73,6 +76,7 @@ func NewMainServer(cfg *config.ServerConfig, device string) *MainServer {
 	if cfg.Sounds.CommandWarning != nil {
 		soundsCfg.CommandWarning = *cfg.Sounds.CommandWarning
 	}
+	soundsCfg.VoiceAcknowledgements = cfg.Sounds.VoiceAcknowledgements
 	player := sounds.NewPlayer(soundsCfg)
 
 	// create websocket server
@@ -275,6 +279,12 @@ func (s *MainServer) processAudio(ctx context.Context, audioPath string, duratio
 	// skip keyboard clicks
 	if clickPattern.MatchString(transcription) {
 		fmt.Println(" - skipped keyboard clicks")
+		return
+	}
+
+	// skip whisper hallucinations during silence
+	if zeorangerPattern.MatchString(transcription) {
+		fmt.Println(" - skipped whisper hallucination")
 		return
 	}
 

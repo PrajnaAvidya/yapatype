@@ -40,24 +40,12 @@ brew install sox
 brew install whisper-cpp
 ```
 
-#### Ubuntu/Debian
+#### Linux
 
 ```bash
 # audio capture + keystroke injection
-sudo apt install sox ydotool
-
-# whisper.cpp (build from source)
-git clone https://github.com/ggerganov/whisper.cpp
-cd whisper.cpp
-make
-sudo cp main /usr/local/bin/whisper-cli
-```
-
-#### Fedora
-
-```bash
-# audio capture + keystroke injection
-sudo dnf install sox ydotool
+sudo apt install sox ydotool   # Ubuntu/Debian
+sudo dnf install sox ydotool   # Fedora
 
 # whisper.cpp (build from source)
 git clone https://github.com/ggerganov/whisper.cpp
@@ -114,6 +102,7 @@ Flags:
       --host string    websocket host (default: 0.0.0.0)
       --mic string     microphone to use (substring match)
       --no-sound       disable audio feedback
+      --no-voice       disable voice acknowledgements (chime only, macOS)
   -c, --config string  config file path
 ```
 
@@ -180,7 +169,7 @@ Optional config at `~/.config/yapatype/config.json`:
     "whisper_cli": "/usr/bin/whisper-cli",
     "model": "models/ggml-small.en.bin",
     "vosk_model": "models/vosk-model-small-en-us",
-    "sounds": { "enabled": true },
+    "sounds": { "enabled": true, "voice_acknowledgements": true },
     "client_aliases": { "focused": "desktop-ydotool" }
   },
   "client": {
