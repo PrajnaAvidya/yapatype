@@ -435,3 +435,185 @@ func TestRemoveTriggersAutoSelect(t *testing.T) {
 		t.Errorf("after removing active target, should auto-select remaining client, got %q", m.activeTarget)
 	}
 }
+
+func TestRegisterBasic(t *testing.T) {
+	m := NewClientManager(nil)
+
+	conn := &websocket.Conn{}
+	m.Add(conn)
+
+	name, err := m.Register(conn, "testclient", "linux")
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if name != "testclient" {
+		t.Errorf("Register returned %q, want 'testclient'", name)
+	}
+
+	// verify client state
+	client := m.clients[conn]
+	if !client.Registered {
+		t.Error("client should be registered")
+	}
+	if client.Name != "testclient" {
+		t.Errorf("client.Name = %q, want 'testclient'", client.Name)
+	}
+	if client.Platform != "linux" {
+		t.Errorf("client.Platform = %q, want 'linux'", client.Platform)
+	}
+}
+
+func TestRegisterConnectionNotFound(t *testing.T) {
+	m := NewClientManager(nil)
+
+	conn := &websocket.Conn{}
+	// don't call Add - connection not registered
+
+	_, err := m.Register(conn, "test", "linux")
+	if err == nil {
+		t.Error("Register should return error for unknown connection")
+	}
+}
+
+func TestRegisterAutoSelectsTarget(t *testing.T) {
+	m := NewClientManager(nil)
+
+	if m.activeTarget != "" {
+		t.Error("activeTarget should be empty initially")
+	}
+
+	conn := &websocket.Conn{}
+	m.Add(conn)
+	name, _ := m.Register(conn, "first", "linux")
+
+	if m.activeTarget != name {
+		t.Errorf("activeTarget = %q, want %q", m.activeTarget, name)
+	}
+}
+
+func TestRemoveStaleWithTimeout(t *testing.T) {
+	m := NewClientManager(nil)
+
+	// add stale client (old LastPong)
+	connStale := &websocket.Conn{}
+	m.clients[connStale] = &ConnectedClient{
+		Conn:       connStale,
+		Name:       "stale",
+		Registered: true,
+		LastPong:   time.Now().Add(-time.Hour),
+	}
+
+	// add fresh client (recent LastPong)
+	connFresh := &websocket.Conn{}
+	m.clients[connFresh] = &ConnectedClient{
+		Conn:       connFresh,
+		Name:       "fresh",
+		Registered: true,
+		LastPong:   time.Now(),
+	}
+
+	// remove clients stale for > 30 seconds
+	removed := m.RemoveStale(30 * time.Second)
+
+	if len(removed) != 1 {
+		t.Errorf("RemoveStale returned %d names, want 1", len(removed))
+	}
+	if len(removed) > 0 && removed[0] != "stale" {
+		t.Errorf("RemoveStale returned %v, want ['stale']", removed)
+	}
+
+	// verify stale was removed, fresh remains
+	if len(m.clients) != 1 {
+		t.Errorf("clients count = %d, want 1", len(m.clients))
+	}
+	if m.clients[connFresh] == nil {
+		t.Error("fresh client should still exist")
+	}
+}
+
+func TestRemoveStaleTriggersAutoSelect(t *testing.T) {
+	m := NewClientManager(nil)
+
+	// add stale client as active target
+	connStale := &websocket.Conn{}
+	m.clients[connStale] = &ConnectedClient{
+		Conn:       connStale,
+		Name:       "stale",
+		Registered: true,
+		LastPong:   time.Now().Add(-time.Hour),
+	}
+	m.activeTarget = "stale"
+
+	// add fresh client
+	connFresh := &websocket.Conn{}
+	m.clients[connFresh] = &ConnectedClient{
+		Conn:       connFresh,
+		Name:       "fresh",
+		Registered: true,
+		LastPong:   time.Now(),
+	}
+
+	m.RemoveStale(30 * time.Second)
+
+	// should auto-select fresh
+	if m.activeTarget != "fresh" {
+		t.Errorf("activeTarget = %q, want 'fresh'", m.activeTarget)
+	}
+}
+
+func TestRemoveStaleNoStaleClients(t *testing.T) {
+	m := NewClientManager(nil)
+
+	conn := &websocket.Conn{}
+	m.clients[conn] = &ConnectedClient{
+		Conn:       conn,
+		Name:       "fresh",
+		Registered: true,
+		LastPong:   time.Now(),
+	}
+
+	removed := m.RemoveStale(30 * time.Second)
+
+	if len(removed) != 0 {
+		t.Errorf("RemoveStale returned %d names, want 0", len(removed))
+	}
+	if len(m.clients) != 1 {
+		t.Error("client should not be removed")
+	}
+}
+
+func TestSaveAndLoadTarget(t *testing.T) {
+	m := NewClientManager(nil)
+
+	// set target and save
+	m.activeTarget = "testclient"
+	m.saveTarget()
+
+	// load in new manager
+	m2 := NewClientManager(nil)
+	loaded := m2.loadSavedTarget()
+
+	if loaded != "testclient" {
+		t.Errorf("loadSavedTarget = %q, want 'testclient'", loaded)
+	}
+}
+
+func TestSaveEmptyTargetClearsState(t *testing.T) {
+	m := NewClientManager(nil)
+
+	// save a target first
+	m.activeTarget = "temp"
+	m.saveTarget()
+
+	// clear target and save
+	m.activeTarget = ""
+	m.saveTarget()
+
+	// load should return empty
+	m2 := NewClientManager(nil)
+	loaded := m2.loadSavedTarget()
+
+	if loaded != "" {
+		t.Errorf("loadSavedTarget after clearing = %q, want empty", loaded)
+	}
+}

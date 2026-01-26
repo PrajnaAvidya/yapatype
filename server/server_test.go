@@ -86,6 +86,27 @@ func TestClickPattern(t *testing.T) {
 	}
 }
 
+func TestZeorangerPattern(t *testing.T) {
+	tests := []struct {
+		input   string
+		matches bool
+	}{
+		{"subs by www.zeoranger.co.uk", true},
+		{"subs by wwwzeorangercouk", true},
+		{"Subs by ZEORANGER", true},
+		{"zeoranger", true},
+		{"hello world", false},
+		{"enter", false},
+		{"target desktop", false},
+	}
+
+	for _, tt := range tests {
+		if zeorangerPattern.MatchString(tt.input) != tt.matches {
+			t.Errorf("zeorangerPattern(%q) = %v, want %v", tt.input, !tt.matches, tt.matches)
+		}
+	}
+}
+
 func TestNewMainServer(t *testing.T) {
 	cfg := &config.ServerConfig{
 		Host:      "localhost",
