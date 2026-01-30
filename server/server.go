@@ -32,6 +32,12 @@ var zeorangerPattern = regexp.MustCompile(`(?i)zeoranger`)
 // default whisper prompt
 const defaultPrompt = "Commands: newline, enter, send it, escape, tab, slash, backspace."
 
+// audioChunk holds a recorded audio segment for processing
+type audioChunk struct {
+	path     string
+	duration float64
+}
+
 // MainServer orchestrates audio capture, transcription, and dispatch
 type MainServer struct {
 	config        *config.ServerConfig
@@ -175,20 +181,34 @@ func (s *MainServer) setupCallbacks() {
 	}
 }
 
-// audioLoop is the main audio capture and processing loop
+// audioLoop orchestrates parallel recording and transcription
 func (s *MainServer) audioLoop(ctx context.Context) error {
+	audioChan := make(chan audioChunk, 5) // buffer for bursts
+
+	// start recording goroutine - runs continuously
+	go s.recordLoop(ctx, audioChan)
+
+	// run transcription in main goroutine
+	s.transcribeLoop(ctx, audioChan)
+	return nil
+}
+
+// recordLoop continuously captures audio, sending chunks to the channel
+func (s *MainServer) recordLoop(ctx context.Context, audioChan chan<- audioChunk) {
+	defer close(audioChan)
+
 	for {
 		s.mu.Lock()
 		running := s.running
 		s.mu.Unlock()
 
 		if !running {
-			return nil
+			return
 		}
 
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		default:
 		}
 
@@ -200,8 +220,27 @@ func (s *MainServer) audioLoop(ctx context.Context) error {
 		}
 
 		if audioPath != "" {
-			s.processAudio(ctx, audioPath, duration)
+			select {
+			case audioChan <- audioChunk{path: audioPath, duration: duration}:
+			case <-ctx.Done():
+				s.audio.Cleanup(audioPath)
+				return
+			}
 		}
+	}
+}
+
+// transcribeLoop processes audio chunks from the channel
+func (s *MainServer) transcribeLoop(ctx context.Context, audioChan <-chan audioChunk) {
+	for chunk := range audioChan {
+		select {
+		case <-ctx.Done():
+			s.audio.Cleanup(chunk.path)
+			return
+		default:
+		}
+
+		s.processAudio(ctx, chunk.path, chunk.duration)
 	}
 }
 
