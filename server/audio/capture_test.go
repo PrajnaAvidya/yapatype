@@ -28,7 +28,7 @@ func TestDefaultAudioConfig(t *testing.T) {
 
 func TestNewAudioCapture(t *testing.T) {
 	cfg := DefaultAudioConfig()
-	ac := NewAudioCapture(cfg, "hw:1,0")
+	ac := NewAudioCapture(cfg, "hw:1,0", "")
 
 	if ac.Config.SampleRate != 16000 {
 		t.Error("Config not set correctly")
@@ -45,14 +45,14 @@ func TestAudioCaptureGetEnv(t *testing.T) {
 	cfg := DefaultAudioConfig()
 
 	// no device - should return nil
-	ac := NewAudioCapture(cfg, "")
+	ac := NewAudioCapture(cfg, "", "")
 	env := ac.getEnv()
 	if env != nil {
 		t.Error("getEnv should return nil when no device set")
 	}
 
 	// with device - should include AUDIODEV
-	ac = NewAudioCapture(cfg, "hw:1,0")
+	ac = NewAudioCapture(cfg, "hw:1,0", "")
 	env = ac.getEnv()
 	if env == nil {
 		t.Fatal("getEnv should return env when device is set")
@@ -72,17 +72,17 @@ func TestAudioCaptureGetEnv(t *testing.T) {
 
 func TestAudioCaptureGetTempPath(t *testing.T) {
 	cfg := DefaultAudioConfig()
-	ac := NewAudioCapture(cfg, "")
+	ac := NewAudioCapture(cfg, "", "")
 
 	path := ac.getTempPath()
-	if !strings.HasSuffix(path, "yapatype-recording.wav") {
-		t.Errorf("getTempPath = %q, should end with yapatype-recording.wav", path)
+	if !strings.Contains(path, "yapatype-recording-") || !strings.HasSuffix(path, ".wav") {
+		t.Errorf("getTempPath = %q, should contain yapatype-recording- and end with .wav", path)
 	}
 }
 
 func TestAudioCaptureCleanup(t *testing.T) {
 	cfg := DefaultAudioConfig()
-	ac := NewAudioCapture(cfg, "")
+	ac := NewAudioCapture(cfg, "", "")
 
 	// create a temp file
 	tmpFile := filepath.Join(os.TempDir(), "yapatype-test-cleanup.wav")
@@ -108,7 +108,7 @@ func TestAudioCaptureCleanup(t *testing.T) {
 
 func TestAudioCaptureCleanupEmpty(t *testing.T) {
 	cfg := DefaultAudioConfig()
-	ac := NewAudioCapture(cfg, "")
+	ac := NewAudioCapture(cfg, "", "")
 
 	// should not panic with empty path
 	ac.Cleanup("")
@@ -116,7 +116,7 @@ func TestAudioCaptureCleanupEmpty(t *testing.T) {
 
 func TestAudioCaptureCancel(t *testing.T) {
 	cfg := DefaultAudioConfig()
-	ac := NewAudioCapture(cfg, "")
+	ac := NewAudioCapture(cfg, "", "")
 
 	// should not panic when no process running
 	ac.Cancel()
@@ -135,7 +135,7 @@ func TestGetDurationWithRealFile(t *testing.T) {
 	}
 
 	cfg := DefaultAudioConfig()
-	ac := NewAudioCapture(cfg, "")
+	ac := NewAudioCapture(cfg, "", "")
 
 	// create a minimal wav file using sox
 	tmpFile := filepath.Join(os.TempDir(), "yapatype-duration-test.wav")
@@ -168,7 +168,7 @@ func TestConcatenateWithRealFiles(t *testing.T) {
 	}
 
 	cfg := DefaultAudioConfig()
-	ac := NewAudioCapture(cfg, "")
+	ac := NewAudioCapture(cfg, "", "")
 
 	tmpDir := os.TempDir()
 	file1 := filepath.Join(tmpDir, "yapatype-concat-1.wav")
@@ -369,5 +369,39 @@ func TestGetDefaultDeviceParsingMacOS(t *testing.T) {
 
 	if result != "External Microphone" {
 		t.Errorf("parsed default = %q, want 'External Microphone'", result)
+	}
+}
+
+func TestCheckRequiredDevice_NoRequirement(t *testing.T) {
+	cfg := DefaultAudioConfig()
+	ac := NewAudioCapture(cfg, "", "")
+
+	// no required device - should always return nil
+	err := ac.CheckRequiredDevice(context.Background())
+	if err != nil {
+		t.Errorf("CheckRequiredDevice with no requirement should return nil, got %v", err)
+	}
+}
+
+func TestCheckRequiredDevice_DeviceNotFound(t *testing.T) {
+	cfg := DefaultAudioConfig()
+	// set a required device that doesn't exist
+	ac := NewAudioCapture(cfg, "", "NonExistentDevice12345")
+
+	err := ac.CheckRequiredDevice(context.Background())
+	if err != ErrDeviceUnavailable {
+		t.Errorf("CheckRequiredDevice with missing device should return ErrDeviceUnavailable, got %v", err)
+	}
+}
+
+func TestNewAudioCapture_RequiredDevice(t *testing.T) {
+	cfg := DefaultAudioConfig()
+	ac := NewAudioCapture(cfg, "Shure MV7", "MV7")
+
+	if ac.Device != "Shure MV7" {
+		t.Errorf("Device = %q, want 'Shure MV7'", ac.Device)
+	}
+	if ac.RequiredDevice != "MV7" {
+		t.Errorf("RequiredDevice = %q, want 'MV7'", ac.RequiredDevice)
 	}
 }

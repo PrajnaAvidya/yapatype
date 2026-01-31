@@ -32,6 +32,12 @@ var zeorangerPattern = regexp.MustCompile(`(?i)zeoranger`)
 // default whisper prompt
 const defaultPrompt = "Commands: newline, enter, send it, escape, tab, slash, backspace."
 
+// audioChunk holds a recorded audio segment for processing
+type audioChunk struct {
+	path     string
+	duration float64
+}
+
 // MainServer orchestrates audio capture, transcription, and dispatch
 type MainServer struct {
 	config        *config.ServerConfig
@@ -47,9 +53,11 @@ type MainServer struct {
 }
 
 // NewMainServer creates a new main server
-func NewMainServer(cfg *config.ServerConfig, device string) *MainServer {
+// device is the resolved device name to use
+// requiredDevice is the original configured device pattern (if set, device must remain available)
+func NewMainServer(cfg *config.ServerConfig, device string, requiredDevice string) *MainServer {
 	// create audio capture
-	audioCapture := audio.NewAudioCapture(audio.DefaultAudioConfig(), device)
+	audioCapture := audio.NewAudioCapture(audio.DefaultAudioConfig(), device, requiredDevice)
 
 	// create whisper engine
 	whisperCLI := "whisper-cli"
@@ -175,33 +183,79 @@ func (s *MainServer) setupCallbacks() {
 	}
 }
 
-// audioLoop is the main audio capture and processing loop
+// audioLoop orchestrates parallel recording and transcription
 func (s *MainServer) audioLoop(ctx context.Context) error {
+	audioChan := make(chan audioChunk, 5) // buffer for bursts
+
+	// start recording goroutine - runs continuously
+	go s.recordLoop(ctx, audioChan)
+
+	// run transcription in main goroutine
+	s.transcribeLoop(ctx, audioChan)
+	return nil
+}
+
+// recordLoop continuously captures audio, sending chunks to the channel
+func (s *MainServer) recordLoop(ctx context.Context, audioChan chan<- audioChunk) {
+	defer close(audioChan)
+
 	for {
 		s.mu.Lock()
 		running := s.running
 		s.mu.Unlock()
 
 		if !running {
-			return nil
+			return
 		}
 
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		default:
 		}
 
 		audioPath, duration, err := s.audio.Record(ctx)
 		if err != nil {
+			// if required device is unavailable, wait for it to come back
+			if err == audio.ErrDeviceUnavailable {
+				s.sounds.PlayCommandWarning()
+				fmt.Printf("configured microphone unavailable, waiting...\n")
+				device, waitErr := WaitForMicrophone(ctx, s.audio.RequiredDevice)
+				if waitErr != nil {
+					return
+				}
+				s.audio.Device = device
+				fmt.Printf("microphone reconnected: %s\n", device)
+				s.sounds.PlayReady()
+				continue
+			}
 			fmt.Printf("audio error: %v\n", err)
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
 		if audioPath != "" {
-			s.processAudio(ctx, audioPath, duration)
+			select {
+			case audioChan <- audioChunk{path: audioPath, duration: duration}:
+			case <-ctx.Done():
+				s.audio.Cleanup(audioPath)
+				return
+			}
 		}
+	}
+}
+
+// transcribeLoop processes audio chunks from the channel
+func (s *MainServer) transcribeLoop(ctx context.Context, audioChan <-chan audioChunk) {
+	for chunk := range audioChan {
+		select {
+		case <-ctx.Done():
+			s.audio.Cleanup(chunk.path)
+			return
+		default:
+		}
+
+		s.processAudio(ctx, chunk.path, chunk.duration)
 	}
 }
 
