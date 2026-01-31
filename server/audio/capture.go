@@ -82,9 +82,9 @@ func (a *AudioCapture) getEnv() []string {
 	return append(env, "AUDIODEV="+a.Device)
 }
 
-// getTempPath returns path for temporary audio file
+// getTempPath returns path for temporary audio file (unique per recording)
 func (a *AudioCapture) getTempPath() string {
-	return filepath.Join(a.tempDir, "yapatype-recording.wav")
+	return filepath.Join(a.tempDir, fmt.Sprintf("yapatype-recording-%d.wav", time.Now().UnixNano()))
 }
 
 // Record captures audio until silence detected
