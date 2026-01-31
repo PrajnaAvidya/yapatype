@@ -75,8 +75,8 @@ func TestAudioCaptureGetTempPath(t *testing.T) {
 	ac := NewAudioCapture(cfg, "", "")
 
 	path := ac.getTempPath()
-	if !strings.HasSuffix(path, "yapatype-recording.wav") {
-		t.Errorf("getTempPath = %q, should end with yapatype-recording.wav", path)
+	if !strings.Contains(path, "yapatype-recording-") || !strings.HasSuffix(path, ".wav") {
+		t.Errorf("getTempPath = %q, should contain yapatype-recording- and end with .wav", path)
 	}
 }
 

@@ -222,7 +222,7 @@ func (s *MainServer) recordLoop(ctx context.Context, audioChan chan<- audioChunk
 				fmt.Printf("configured microphone unavailable, waiting...\n")
 				device, waitErr := WaitForMicrophone(ctx, s.audio.RequiredDevice)
 				if waitErr != nil {
-					return waitErr
+					return
 				}
 				s.audio.Device = device
 				fmt.Printf("microphone reconnected: %s\n", device)
