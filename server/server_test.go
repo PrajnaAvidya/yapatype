@@ -117,7 +117,7 @@ func TestNewMainServer(t *testing.T) {
 		Aliases:   map[string]string{"work": "desktop"},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 	if srv == nil {
 		t.Fatal("NewMainServer returned nil")
 	}
@@ -154,7 +154,7 @@ func TestNewMainServer_WithVosk(t *testing.T) {
 		Sounds:    config.SoundsConfig{Enabled: false},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 	if srv.vosk == nil {
 		t.Error("vosk should be initialized when VoskModel is set")
 	}
@@ -168,7 +168,7 @@ func TestMainServer_DictationMode(t *testing.T) {
 		Sounds: config.SoundsConfig{Enabled: false},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 
 	// initially not in dictation mode
 	if srv.dictationMode {
@@ -191,7 +191,7 @@ func TestMainServer_DispatchActions(t *testing.T) {
 		Sounds: config.SoundsConfig{Enabled: false},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 
 	// test with empty actions - should not panic
 	result := commands.ParseResult{
@@ -264,7 +264,7 @@ func TestMainServer_HandleTranscription_TargetSwitch(t *testing.T) {
 		Sounds: config.SoundsConfig{Enabled: false},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 
 	// handleTranscription with target command - will fail (no clients)
 	// but shouldn't panic
@@ -281,7 +281,7 @@ func TestMainServer_HandleTranscription_DictationMode(t *testing.T) {
 		Sounds: config.SoundsConfig{Enabled: false},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 	srv.dictationMode = true
 
 	// in dictation mode, "resume commands" should exit
@@ -308,7 +308,7 @@ func TestMainServer_HandleTranscription_TwoWordFallback(t *testing.T) {
 		Sounds: config.SoundsConfig{Enabled: false},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 
 	// two-word fallback - "that desktop" should try to target "desktop"
 	// will fail (no clients) but shouldn't panic
@@ -323,7 +323,7 @@ func TestMainServer_Stop(t *testing.T) {
 		Sounds: config.SoundsConfig{Enabled: false},
 	}
 
-	srv := NewMainServer(cfg, "")
+	srv := NewMainServer(cfg, "", "")
 	srv.running = true
 
 	srv.Stop()

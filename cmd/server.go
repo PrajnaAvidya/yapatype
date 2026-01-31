@@ -72,9 +72,11 @@ func runServer(cmd *cobra.Command, args []string) error {
 
 	// wait for specific microphone if configured
 	var device string
+	var requiredDevice string
 	if cfg.Server.Microphone != nil {
+		requiredDevice = *cfg.Server.Microphone
 		var err error
-		device, err = server.WaitForMicrophone(ctx, *cfg.Server.Microphone)
+		device, err = server.WaitForMicrophone(ctx, requiredDevice)
 		if err != nil {
 			return fmt.Errorf("microphone wait: %w", err)
 		}
@@ -82,7 +84,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 
 	// create main server
-	srv := server.NewMainServer(&cfg.Server, device)
+	srv := server.NewMainServer(&cfg.Server, device, requiredDevice)
 
 	// signal handling
 	sigCh := make(chan os.Signal, 1)

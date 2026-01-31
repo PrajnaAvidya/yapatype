@@ -53,9 +53,11 @@ type MainServer struct {
 }
 
 // NewMainServer creates a new main server
-func NewMainServer(cfg *config.ServerConfig, device string) *MainServer {
+// device is the resolved device name to use
+// requiredDevice is the original configured device pattern (if set, device must remain available)
+func NewMainServer(cfg *config.ServerConfig, device string, requiredDevice string) *MainServer {
 	// create audio capture
-	audioCapture := audio.NewAudioCapture(audio.DefaultAudioConfig(), device)
+	audioCapture := audio.NewAudioCapture(audio.DefaultAudioConfig(), device, requiredDevice)
 
 	// create whisper engine
 	whisperCLI := "whisper-cli"
@@ -214,6 +216,19 @@ func (s *MainServer) recordLoop(ctx context.Context, audioChan chan<- audioChunk
 
 		audioPath, duration, err := s.audio.Record(ctx)
 		if err != nil {
+			// if required device is unavailable, wait for it to come back
+			if err == audio.ErrDeviceUnavailable {
+				s.sounds.PlayCommandWarning()
+				fmt.Printf("configured microphone unavailable, waiting...\n")
+				device, waitErr := WaitForMicrophone(ctx, s.audio.RequiredDevice)
+				if waitErr != nil {
+					return waitErr
+				}
+				s.audio.Device = device
+				fmt.Printf("microphone reconnected: %s\n", device)
+				s.sounds.PlayReady()
+				continue
+			}
 			fmt.Printf("audio error: %v\n", err)
 			time.Sleep(500 * time.Millisecond)
 			continue

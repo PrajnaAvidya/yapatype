@@ -32,10 +32,14 @@ func DefaultAudioConfig() AudioConfig {
 	}
 }
 
+// ErrDeviceUnavailable is returned when a required device is not available
+var ErrDeviceUnavailable = fmt.Errorf("required audio device unavailable")
+
 // AudioCapture handles audio recording via sox
 type AudioCapture struct {
 	Config           AudioConfig
 	Device           string // exact device name/id for AUDIODEV
+	RequiredDevice   string // if set, only this device is allowed (no fallback)
 	tempDir          string
 	currentCmd       *exec.Cmd
 	mu               sync.Mutex
@@ -44,12 +48,29 @@ type AudioCapture struct {
 }
 
 // NewAudioCapture creates a new AudioCapture with given config
-func NewAudioCapture(config AudioConfig, device string) *AudioCapture {
+// If requiredDevice is non-empty, the capture will only work with that device
+func NewAudioCapture(config AudioConfig, device string, requiredDevice string) *AudioCapture {
 	return &AudioCapture{
-		Config:  config,
-		Device:  device,
-		tempDir: os.TempDir(),
+		Config:         config,
+		Device:         device,
+		RequiredDevice: requiredDevice,
+		tempDir:        os.TempDir(),
 	}
+}
+
+// CheckRequiredDevice verifies the required device is still available
+// Returns nil if no required device is set or if the device is available
+// Returns ErrDeviceUnavailable if the required device is not found
+func (a *AudioCapture) CheckRequiredDevice(ctx context.Context) error {
+	if a.RequiredDevice == "" {
+		return nil
+	}
+
+	device, _ := FindMatchingDevice(ctx, a.RequiredDevice)
+	if device == "" {
+		return ErrDeviceUnavailable
+	}
+	return nil
 }
 
 // getEnv returns environment with AUDIODEV set if using specific device
@@ -127,6 +148,12 @@ func (a *AudioCapture) Record(ctx context.Context) (string, float64, error) {
 			}
 			log.Printf("[audio] sox error (exit): %s", strings.TrimSpace(errMsg))
 		}
+		// if we have a required device, check if it's still available
+		if a.RequiredDevice != "" {
+			if err := a.CheckRequiredDevice(ctx); err != nil {
+				return "", 0, err
+			}
+		}
 		return "", 0, nil
 	}
 
@@ -139,6 +166,13 @@ func (a *AudioCapture) Record(ctx context.Context) (string, float64, error) {
 		if a.consecutiveEmpty >= 20 && a.consecutiveEmpty%20 == 0 {
 			healthy, msg := a.CheckAudioHealth(context.Background())
 			log.Printf("[audio] %d empty recordings, health check: healthy=%v, %s", a.consecutiveEmpty, healthy, msg)
+		}
+
+		// if we have a required device, check if it's still available
+		if a.RequiredDevice != "" {
+			if err := a.CheckRequiredDevice(ctx); err != nil {
+				return "", 0, err
+			}
 		}
 
 		return "", 0, nil

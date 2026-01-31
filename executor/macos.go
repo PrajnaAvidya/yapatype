@@ -34,6 +34,11 @@ func (e *MacOSExecutor) TypeText(ctx context.Context, text string) error {
 		return nil
 	}
 
+	// save current clipboard contents
+	var originalClipboard []byte
+	pbpasteCmd := exec.CommandContext(ctx, "pbpaste")
+	originalClipboard, _ = pbpasteCmd.Output() // ignore error, clipboard may be empty or non-text
+
 	// use pbcopy to set clipboard, then Cmd+V to paste
 	// this avoids System Events keystroke which conflicts with terminals
 	// using the Kitty keyboard protocol (like Claude CLI)
@@ -47,6 +52,13 @@ func (e *MacOSExecutor) TypeText(ctx context.Context, text string) error {
 	script := `tell application "System Events" to keystroke "v" using command down`
 	if err := runOsascript(ctx, script); err != nil {
 		return fmt.Errorf("paste: %w", err)
+	}
+
+	// restore original clipboard contents
+	if len(originalClipboard) > 0 {
+		restoreCmd := exec.CommandContext(ctx, "pbcopy")
+		restoreCmd.Stdin = strings.NewReader(string(originalClipboard))
+		restoreCmd.Run() // best effort, ignore errors
 	}
 
 	return nil
