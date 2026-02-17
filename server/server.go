@@ -27,6 +27,9 @@ var resumePattern = regexp.MustCompile(`^(resume\s?commands?|start\s?commands?)$
 // focus tab pattern for kitty tab switching
 var focusTabPattern = regexp.MustCompile(`(?i)^focus\s+tab\s+(\w+)[.,!?]*$`)
 
+// trailing "tab N" for combined target+tab commands
+var trailingTabPattern = regexp.MustCompile(`(?i)^(.+?)\s+tab\s+(\w+)[.,!?]*$`)
+
 // click sound pattern to skip
 var clickPattern = regexp.MustCompile(`(?i)^click[, ]*\.?$`)
 
@@ -378,7 +381,30 @@ func (s *MainServer) handleTranscription(text string) {
 
 	// check for target switching command
 	if match := targetPattern.FindStringSubmatch(normalized); len(match) > 1 {
-		// remove spaces/punctuation from target name
+		// check for combined target + tab: "target <name> tab <number>"
+		if tabMatch := trailingTabPattern.FindStringSubmatch(match[1]); len(tabMatch) > 2 {
+			clientName := strings.ReplaceAll(tabMatch[1], " ", "")
+			clientName = strings.TrimRight(clientName, ".,!?")
+			tabStr := ConvertNumberWords(tabMatch[2])
+			if tabNum, err := strconv.Atoi(tabStr); err == nil && tabNum > 0 {
+				if s.wsServer.Manager.SetTarget(clientName) {
+					if err := s.sendToTarget(protocol.NewFocusTab(tabNum)); err != nil {
+						fmt.Printf("   target switched but focus tab failed: %v\n", err)
+						s.sounds.PlayCommandWarning()
+					} else {
+						fmt.Printf("   target %s, focus tab %d\n", clientName, tabNum)
+						s.sounds.Say(fmt.Sprintf("%s tab %d", clientName, tabNum))
+					}
+				} else {
+					fmt.Printf("   unknown target: %s\n", clientName)
+					fmt.Printf("   available: %v\n", s.wsServer.Manager.ListClients())
+					s.sounds.PlayCommandWarning()
+				}
+				return
+			}
+		}
+
+		// normal target switching
 		targetName := strings.ReplaceAll(match[1], " ", "")
 		targetName = strings.TrimRight(targetName, ".,!?")
 		if s.wsServer.Manager.SetTarget(targetName) {
