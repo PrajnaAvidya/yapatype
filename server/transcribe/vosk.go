@@ -38,6 +38,9 @@ var BaseGrammar = []string{
 	"scratch", "scratch that", "erase", "erase that", "delete that", "undo that",
 	"pause commands", "stop commands",
 	"resume commands", "start commands",
+	"focus tab", "focus tab one", "focus tab two", "focus tab three",
+	"focus tab four", "focus tab five", "focus tab six", "focus tab seven",
+	"focus tab eight", "focus tab nine", "focus tab ten",
 }
 
 // VoskEngine handles fast command recognition with grammar constraints

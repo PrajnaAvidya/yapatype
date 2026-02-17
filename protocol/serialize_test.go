@@ -82,6 +82,24 @@ func TestSerializeTargetStatus(t *testing.T) {
 	}
 }
 
+func TestSerializeFocusTab(t *testing.T) {
+	msg := NewFocusTab(3)
+	data, err := Serialize(msg)
+	if err != nil {
+		t.Fatalf("serialize: %v", err)
+	}
+
+	var m map[string]any
+	json.Unmarshal(data, &m)
+
+	if m["type"] != "focus_tab" {
+		t.Errorf("type = %v, want 'focus_tab'", m["type"])
+	}
+	if m["index"] != float64(3) {
+		t.Errorf("index = %v, want 3", m["index"])
+	}
+}
+
 func TestSerializeRegistered(t *testing.T) {
 	msg := NewRegistered("client1")
 	data, err := Serialize(msg)
@@ -186,6 +204,11 @@ func TestParseServerMessages(t *testing.T) {
 			want: &TargetStatus{Type: "target_status", IsActive: true},
 		},
 		{
+			name: "FocusTab",
+			json: `{"type":"focus_tab","index":3}`,
+			want: &FocusTab{Type: "focus_tab", Index: 3},
+		},
+		{
 			name: "Registered",
 			json: `{"type":"registered","name":"client1"}`,
 			want: &Registered{Type: "registered", Name: "client1"},
@@ -255,14 +278,15 @@ func TestRoundTrip(t *testing.T) {
 		NewSendKey(KeyTab, []Modifier{ModAlt}, 3),
 		NewPing(),
 		NewTargetStatus(false),
+		NewFocusTab(2),
 		NewRegistered("myname"),
 		NewRegister("client", "linux"),
 		NewPrompt("vocab prompt"),
 		NewPong(),
 	}
 
-	serverMsgs := messages[:5]
-	clientMsgs := messages[5:]
+	serverMsgs := messages[:6]
+	clientMsgs := messages[6:]
 
 	for _, msg := range serverMsgs {
 		data, err := Serialize(msg)

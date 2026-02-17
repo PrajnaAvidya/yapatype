@@ -194,6 +194,9 @@ func (c *Client) handleMessage(ctx context.Context, conn *websocket.Conn, msg an
 		}
 		return conn.WriteMessage(websocket.TextMessage, data)
 
+	case *protocol.FocusTab:
+		return c.executor.FocusTab(ctx, m.Index)
+
 	case *protocol.TargetStatus:
 		if m.IsActive {
 			fmt.Println("[active]")

@@ -14,6 +14,8 @@ type Executor interface {
 	TypeText(ctx context.Context, text string) error
 	// SendKey sends a keystroke with optional modifiers
 	SendKey(ctx context.Context, key protocol.Key, modifiers []protocol.Modifier, repeat int) error
+	// FocusTab focuses a specific tab (1-indexed). no-op if not supported.
+	FocusTab(ctx context.Context, index int) error
 	// Setup performs any required initialization
 	Setup(ctx context.Context) error
 	// Cleanup performs cleanup on shutdown

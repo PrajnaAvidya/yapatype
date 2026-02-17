@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/PrajnaAvidya/yapatype/config"
@@ -292,6 +293,79 @@ func TestMainServer_HandleTranscription_TwoWordFallback(t *testing.T) {
 	// two-word fallback - "that desktop" should try to target "desktop"
 	// will fail (no clients) but shouldn't panic
 	srv.handleTranscription("that desktop")
+}
+
+func TestFocusTabPattern(t *testing.T) {
+	tests := []struct {
+		input   string
+		matches bool
+		tabStr  string
+	}{
+		{"focus tab 2", true, "2"},
+		{"focus tab two", true, "two"},
+		{"Focus Tab 3", true, "3"},
+		{"focus tab 2.", true, "2"},
+		{"focus tab ten", true, "ten"},
+		{"focus tab 1!", true, "1"},
+		{"tab 2", false, ""},
+		{"focus 2", false, ""},
+		{"focus tab", false, ""},
+		{"hello world", false, ""},
+	}
+
+	for _, tt := range tests {
+		match := focusTabPattern.FindStringSubmatch(tt.input)
+		if tt.matches {
+			if len(match) < 2 {
+				t.Errorf("focusTabPattern(%q) should match", tt.input)
+				continue
+			}
+			if match[1] != tt.tabStr {
+				t.Errorf("focusTabPattern(%q) tab = %q, want %q", tt.input, match[1], tt.tabStr)
+			}
+		} else {
+			if len(match) > 0 {
+				t.Errorf("focusTabPattern(%q) should not match", tt.input)
+			}
+		}
+	}
+}
+
+func TestFocusTabNumberWordConversion(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int
+	}{
+		{"two", 2},
+		{"one", 1},
+		{"ten", 10},
+		{"for", 4},  // common mishearing
+		{"to", 2},   // common mishearing
+		{"ate", 8},  // common mishearing
+	}
+
+	for _, tt := range tests {
+		result := ConvertNumberWords(tt.input)
+		if result != fmt.Sprintf("%d", tt.want) {
+			t.Errorf("ConvertNumberWords(%q) = %q, want %q", tt.input, result, fmt.Sprintf("%d", tt.want))
+		}
+	}
+}
+
+func TestMainServer_HandleTranscription_FocusTab(t *testing.T) {
+	cfg := &config.ServerConfig{
+		Host:   "localhost",
+		Port:   9999,
+		Model:  "/models/test.bin",
+		Sounds: config.SoundsConfig{Enabled: false},
+	}
+
+	srv := NewMainServer(cfg, "", "")
+
+	// focus tab command - will fail (no clients) but shouldn't panic
+	srv.handleTranscription("focus tab 2")
+	srv.handleTranscription("focus tab one")
+	srv.handleTranscription("Focus Tab 3")
 }
 
 func TestMainServer_Stop(t *testing.T) {

@@ -118,6 +118,11 @@ func (e *YdotoolExecutor) SendKey(ctx context.Context, key protocol.Key, modifie
 	return nil
 }
 
+// FocusTab is a no-op for ydotool (kitty-only feature)
+func (e *YdotoolExecutor) FocusTab(ctx context.Context, index int) error {
+	return nil
+}
+
 // Setup performs initialization (no-op for ydotool)
 func (e *YdotoolExecutor) Setup(ctx context.Context) error {
 	return nil

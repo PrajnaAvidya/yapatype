@@ -56,6 +56,13 @@ func ParseServerMessage(data []byte) (any, error) {
 		}
 		return &msg, nil
 
+	case "focus_tab":
+		var msg FocusTab
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, fmt.Errorf("parse FocusTab: %w", err)
+		}
+		return &msg, nil
+
 	case "registered":
 		var msg Registered
 		if err := json.Unmarshal(data, &msg); err != nil {

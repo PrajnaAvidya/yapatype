@@ -41,8 +41,9 @@ func (m *mockExecutor) SendKey(ctx context.Context, key protocol.Key, mods []pro
 	return m.keyErr
 }
 
-func (m *mockExecutor) Setup(ctx context.Context) error  { return m.setupErr }
-func (m *mockExecutor) Cleanup(ctx context.Context) error { return nil }
+func (m *mockExecutor) FocusTab(ctx context.Context, index int) error { return nil }
+func (m *mockExecutor) Setup(ctx context.Context) error               { return m.setupErr }
+func (m *mockExecutor) Cleanup(ctx context.Context) error             { return nil }
 
 // test New()
 

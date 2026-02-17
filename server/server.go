@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +23,9 @@ var targetPattern = regexp.MustCompile(`(?i)^(?:target|switch|control)\s+(.+)$`)
 
 // resume commands pattern for dictation mode exit
 var resumePattern = regexp.MustCompile(`^(resume\s?commands?|start\s?commands?)$`)
+
+// focus tab pattern for kitty tab switching
+var focusTabPattern = regexp.MustCompile(`(?i)^focus\s+tab\s+(\w+)[.,!?]*$`)
 
 // click sound pattern to skip
 var clickPattern = regexp.MustCompile(`(?i)^click[, ]*\.?$`)
@@ -405,6 +409,21 @@ func (s *MainServer) handleTranscription(text string) {
 	if s.wsServer.Manager.IsValidTarget(bareName) {
 		if s.wsServer.Manager.SetTarget(bareName) {
 			s.sounds.Say("targeting " + bareName)
+			return
+		}
+	}
+
+	// check for focus tab command
+	if match := focusTabPattern.FindStringSubmatch(normalized); len(match) > 1 {
+		tabStr := ConvertNumberWords(match[1])
+		if tabNum, err := strconv.Atoi(tabStr); err == nil && tabNum > 0 {
+			if err := s.sendToTarget(protocol.NewFocusTab(tabNum)); err != nil {
+				fmt.Println("   (no target connected)")
+				s.sounds.PlayCommandWarning()
+			} else {
+				fmt.Printf("   focus tab %d\n", tabNum)
+				s.sounds.Say(fmt.Sprintf("tab %d", tabNum))
+			}
 			return
 		}
 	}

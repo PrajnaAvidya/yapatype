@@ -27,6 +27,12 @@ type TargetStatus struct {
 	IsActive bool   `json:"is_active"` // true if client is active target
 }
 
+// FocusTab instructs the client to focus a specific terminal tab
+type FocusTab struct {
+	Type  string `json:"type"`  // always "focus_tab"
+	Index int    `json:"index"` // 1-indexed tab number
+}
+
 // Registered confirms client registration with assigned name
 type Registered struct {
 	Type string `json:"type"` // always "registered"
@@ -75,6 +81,10 @@ func NewPing() *Ping {
 
 func NewTargetStatus(isActive bool) *TargetStatus {
 	return &TargetStatus{Type: "target_status", IsActive: isActive}
+}
+
+func NewFocusTab(index int) *FocusTab {
+	return &FocusTab{Type: "focus_tab", Index: index}
 }
 
 func NewRegistered(name string) *Registered {
