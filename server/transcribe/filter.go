@@ -12,6 +12,30 @@ var fillerSounds = map[string]bool{
 	"um":     true,
 }
 
+// hallucination patterns - only filtered in short segments
+var hallucinations = []string{
+	"zeoranger",           // common whisper silence hallucination
+	"thank you",           // silence hallucination
+	"thanks for watching", // youtube-style
+	"subs by",             // subtitle attribution
+}
+
+// IsHallucination returns true if text matches a known hallucination pattern
+// only for short segments (≤ maxWords)
+func IsHallucination(text string, maxWords int) bool {
+	words := strings.Fields(text)
+	if len(words) > maxWords {
+		return false // long text passes through
+	}
+	lower := strings.ToLower(text)
+	for _, h := range hallucinations {
+		if strings.Contains(lower, h) {
+			return true
+		}
+	}
+	return false
+}
+
 // FilterTranscription normalizes and filters whisper output
 // - lowercase and strip whitespace
 // - remove newlines

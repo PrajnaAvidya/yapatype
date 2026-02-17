@@ -118,3 +118,60 @@ func TestFilterTranscription_EdgeCases(t *testing.T) {
 		}
 	}
 }
+
+func TestIsHallucination_ShortSegments(t *testing.T) {
+	tests := []struct {
+		input    string
+		maxWords int
+		want     bool
+	}{
+		// short segments with hallucination patterns - should filter
+		{"subs by zeoranger", 6, true},
+		{"subs by www zeoranger co uk", 6, true},
+		{"thank you", 6, true},
+		{"Thank You.", 6, true},
+		{"thanks for watching", 6, true},
+		{"subs by someone", 6, true},
+
+		// long segments with hallucination patterns - should pass
+		{"I said thank you to him earlier", 6, false},
+		{"I was talking about zeoranger stuff today", 6, false},
+		{"thanks for watching this long video tutorial", 6, false},
+
+		// no hallucination pattern
+		{"hello world", 6, false},
+		{"enter", 6, false},
+		{"target desktop", 6, false},
+
+		// edge cases
+		{"", 6, false},
+		{"   ", 6, false},
+	}
+
+	for _, tt := range tests {
+		got := IsHallucination(tt.input, tt.maxWords)
+		if got != tt.want {
+			t.Errorf("IsHallucination(%q, %d) = %v, want %v", tt.input, tt.maxWords, got, tt.want)
+		}
+	}
+}
+
+func TestIsHallucination_Threshold(t *testing.T) {
+	// test exact threshold behavior
+	text := "one two three four five six" // 6 words
+
+	if !IsHallucination("thank you for this thing here", 6) {
+		// 6 words with pattern - should filter
+		t.Error("6 words at threshold should filter")
+	}
+
+	if IsHallucination("thank you for this thing here now", 6) {
+		// 7 words with pattern - should pass
+		t.Error("7 words above threshold should pass")
+	}
+
+	// text without pattern never filtered
+	if IsHallucination(text, 6) {
+		t.Error("text without hallucination pattern should never filter")
+	}
+}

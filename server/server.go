@@ -26,9 +26,6 @@ var resumePattern = regexp.MustCompile(`^(resume\s?commands?|start\s?commands?)$
 // click sound pattern to skip
 var clickPattern = regexp.MustCompile(`(?i)^click[, ]*\.?$`)
 
-// whisper hallucination during silence
-var zeorangerPattern = regexp.MustCompile(`(?i)zeoranger`)
-
 // default whisper prompt
 const defaultPrompt = "Commands: newline, enter, send it, escape, tab, slash, backspace."
 
@@ -336,8 +333,8 @@ func (s *MainServer) processAudio(ctx context.Context, audioPath string, duratio
 		return
 	}
 
-	// skip whisper hallucinations during silence
-	if zeorangerPattern.MatchString(transcription) {
+	// skip whisper hallucinations (only short segments)
+	if transcribe.IsHallucination(transcription, 6) {
 		fmt.Println(" - skipped whisper hallucination")
 		return
 	}
