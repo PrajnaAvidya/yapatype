@@ -912,6 +912,18 @@ func TestNextMode(t *testing.T) {
 	}
 }
 
+func TestFocusTabIsKnownCommand(t *testing.T) {
+	commands := []string{
+		"focus tab two", "focus tab 2",
+		"focus tab one", "focus tab ten",
+	}
+	for _, cmd := range commands {
+		if !IsKnownCommand(cmd) {
+			t.Errorf("IsKnownCommand(%q) = false, want true", cmd)
+		}
+	}
+}
+
 func TestModeAlone(t *testing.T) {
 	result := ParseShortCommand("mode")
 	if result == nil {

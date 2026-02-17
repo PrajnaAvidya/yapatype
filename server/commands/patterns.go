@@ -50,6 +50,9 @@ var (
 	// resume commands (exit dictation mode)
 	resumeCommandsPatterns = regexp.MustCompile(`^(resume\s?commands?|start\s?commands?)$`)
 
+	// focus tab (kitty tab switching)
+	focusTabCmdPattern = regexp.MustCompile(`^focus\s+tab\s+\w+$`)
+
 	// target switching
 	targetPatterns = regexp.MustCompile(`^(target|switch|control)\s+\S+$`)
 
@@ -80,6 +83,7 @@ var shortCommandPatterns = []*regexp.Regexp{
 	repeatPatterns,
 	pauseCommandsPatterns,
 	resumeCommandsPatterns,
+	focusTabCmdPattern,
 }
 
 // first words that trigger two-word command matching

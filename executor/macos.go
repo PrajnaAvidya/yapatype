@@ -117,6 +117,11 @@ func (e *MacOSExecutor) SendKey(ctx context.Context, key protocol.Key, modifiers
 	return nil
 }
 
+// FocusTab is a no-op for macOS (kitty-only feature)
+func (e *MacOSExecutor) FocusTab(ctx context.Context, index int) error {
+	return nil
+}
+
 // Setup performs initialization (no-op for macOS)
 func (e *MacOSExecutor) Setup(ctx context.Context) error {
 	return nil
