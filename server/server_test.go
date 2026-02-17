@@ -352,6 +352,56 @@ func TestFocusTabNumberWordConversion(t *testing.T) {
 	}
 }
 
+func TestTrailingTabPattern(t *testing.T) {
+	tests := []struct {
+		input   string
+		matches bool
+		name    string
+		tabStr  string
+	}{
+		{"focus tab 2", true, "focus", "2"},
+		{"desktop tab two", true, "desktop", "two"},
+		{"my client tab 3", true, "my client", "3"},
+		{"focus tab", false, "", ""},
+		{"focus", false, "", ""},
+	}
+
+	for _, tt := range tests {
+		match := trailingTabPattern.FindStringSubmatch(tt.input)
+		if tt.matches {
+			if len(match) < 3 {
+				t.Errorf("trailingTabPattern(%q) should match", tt.input)
+				continue
+			}
+			if match[1] != tt.name {
+				t.Errorf("trailingTabPattern(%q) name = %q, want %q", tt.input, match[1], tt.name)
+			}
+			if match[2] != tt.tabStr {
+				t.Errorf("trailingTabPattern(%q) tab = %q, want %q", tt.input, match[2], tt.tabStr)
+			}
+		} else {
+			if len(match) > 0 {
+				t.Errorf("trailingTabPattern(%q) should not match", tt.input)
+			}
+		}
+	}
+}
+
+func TestMainServer_HandleTranscription_CombinedTargetTab(t *testing.T) {
+	cfg := &config.ServerConfig{
+		Host:   "localhost",
+		Port:   9999,
+		Model:  "/models/test.bin",
+		Sounds: config.SoundsConfig{Enabled: false},
+	}
+
+	srv := NewMainServer(cfg, "", "")
+
+	// combined target+tab command - will fail (no clients) but shouldn't panic
+	srv.handleTranscription("target focus tab 2")
+	srv.handleTranscription("switch desktop tab one")
+}
+
 func TestMainServer_HandleTranscription_FocusTab(t *testing.T) {
 	cfg := &config.ServerConfig{
 		Host:   "localhost",

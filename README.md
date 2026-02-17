@@ -155,6 +155,8 @@ Creates a `.whisper-prompt` file that clients automatically load and send to the
 
 **End-of-text:** send, send it, hit enter, press enter, submit
 
+**Tab switching (kitty only):** "focus tab 1", "focus tab 2", etc. Switches which kitty tab receives keystrokes. Supports number words ("focus tab two"). Can be combined with target switching: "target focused tab 2". All subsequent input goes to that tab regardless of visual focus.
+
 **Dictation mode:** "pause commands" to enter pure dictation, "resume commands" to exit
 
 ## Configuration
