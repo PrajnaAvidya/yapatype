@@ -1,11 +1,13 @@
 #!/bin/bash
-rm -f /tmp/mykitty.sock
+SOCK="$HOME/.local/share/yapatype/kitty.sock"
+mkdir -p "$(dirname "$SOCK")"
+rm -f "$SOCK"
 
 # launch new kitty window for claude
-kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty.sock 2>/dev/null &
+kitty -o allow_remote_control=yes --listen-on "unix:$SOCK" 2>/dev/null &
 
 # wait for socket
 sleep 0.5
 
 # run voice client in current terminal
-/home/rafiq/Code/yapatype/yapatype client --name focus --kitty-socket /tmp/mykitty.sock
+"$HOME/Code/yapatype/yapatype" client --name focus --kitty-socket "$SOCK"
