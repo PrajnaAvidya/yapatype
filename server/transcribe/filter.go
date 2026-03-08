@@ -41,6 +41,7 @@ func IsHallucination(text string, maxWords int) bool {
 // - remove newlines
 // - filter [BLANK_AUDIO], [silence], etc.
 // - filter (coughing), (sighs), etc.
+// - filter *clears throat*, *coughing*, etc.
 // - filter filler sounds
 func FilterTranscription(text string) string {
 	// normalize: lowercase, strip, remove newlines
@@ -54,6 +55,11 @@ func FilterTranscription(text string) string {
 
 	// skip parenthetical annotations like (clears throat), (sighs), etc.
 	if strings.HasPrefix(text, "(") && strings.HasSuffix(text, ")") {
+		return ""
+	}
+
+	// skip asterisk annotations like *clears throat*, *coughing*, etc.
+	if strings.HasPrefix(text, "*") && strings.HasSuffix(text, "*") && len(text) > 2 {
 		return ""
 	}
 

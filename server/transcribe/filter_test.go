@@ -54,6 +54,23 @@ func TestFilterTranscription_Parenthetical(t *testing.T) {
 	}
 }
 
+func TestFilterTranscription_Asterisk(t *testing.T) {
+	tests := []string{
+		"*clears throat*",
+		"*Clears Throat*",
+		"*coughing*",
+		"*sighs*",
+		"*LAUGHING*",
+	}
+
+	for _, input := range tests {
+		got := FilterTranscription(input)
+		if got != "" {
+			t.Errorf("FilterTranscription(%q) = %q, want empty", input, got)
+		}
+	}
+}
+
 func TestFilterTranscription_Fillers(t *testing.T) {
 	tests := []string{
 		"hmm",
@@ -109,6 +126,8 @@ func TestFilterTranscription_EdgeCases(t *testing.T) {
 		{"hmmm", "hmmm"},              // not a filler (extra m)
 		{"ummm", "ummm"},              // not a filler
 		{"hello [note] world", "hello [note] world"}, // brackets in middle
+		{"*partial", "*partial"},      // not complete asterisks
+		{"partial*", "partial*"},      // not complete asterisks
 	}
 
 	for _, tt := range tests {
