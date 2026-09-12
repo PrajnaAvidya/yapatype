@@ -132,6 +132,10 @@ func Load(path string) (*Config, error) {
 
 // applyDefaults applies auto-detection and auto-generation after loading
 func (c *Config) applyDefaults() {
+	// resolve model paths so they work from any working directory
+	c.Server.Model = ExpandPath(c.Server.Model)
+	c.Server.VoskModel = ExpandPath(c.Server.VoskModel)
+
 	// auto-detect whisper-cli
 	if c.Server.WhisperCLI == nil {
 		cli := detectWhisperCLI()

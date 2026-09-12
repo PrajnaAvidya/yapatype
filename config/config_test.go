@@ -119,6 +119,11 @@ func TestLoadFullConfig(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+
 	// server
 	if cfg.Server.Host != "127.0.0.1" {
 		t.Errorf("Server.Host = %q, want '127.0.0.1'", cfg.Server.Host)
@@ -129,11 +134,11 @@ func TestLoadFullConfig(t *testing.T) {
 	if cfg.Server.WhisperCLI == nil || *cfg.Server.WhisperCLI != "/usr/bin/whisper" {
 		t.Errorf("Server.WhisperCLI = %v, want '/usr/bin/whisper'", cfg.Server.WhisperCLI)
 	}
-	if cfg.Server.Model != "custom-model.bin" {
-		t.Errorf("Server.Model = %q, want 'custom-model.bin'", cfg.Server.Model)
+	if cfg.Server.Model != filepath.Join(cwd, "custom-model.bin") {
+		t.Errorf("Server.Model = %q, want %q", cfg.Server.Model, filepath.Join(cwd, "custom-model.bin"))
 	}
-	if cfg.Server.VoskModel != "custom-vosk" {
-		t.Errorf("Server.VoskModel = %q, want 'custom-vosk'", cfg.Server.VoskModel)
+	if cfg.Server.VoskModel != filepath.Join(cwd, "custom-vosk") {
+		t.Errorf("Server.VoskModel = %q, want %q", cfg.Server.VoskModel, filepath.Join(cwd, "custom-vosk"))
 	}
 	if cfg.Server.Sounds.Enabled {
 		t.Error("Server.Sounds.Enabled = true, want false")
@@ -160,6 +165,97 @@ func TestLoadFullConfig(t *testing.T) {
 	}
 	if cfg.Client.KittySocket == nil || *cfg.Client.KittySocket != "/tmp/kitty.sock" {
 		t.Errorf("Client.KittySocket = %v, want '/tmp/kitty.sock'", cfg.Client.KittySocket)
+	}
+}
+
+func TestExpandPath(t *testing.T) {
+	home, _ := os.UserHomeDir()
+
+	if got := ExpandPath(""); got != "" {
+		t.Errorf("ExpandPath('') = %q, want ''", got)
+	}
+
+	if got := ExpandPath("~/models/model.bin"); got != filepath.Join(home, "models", "model.bin") {
+		t.Errorf("ExpandPath('~/models/model.bin') = %q, want %q", got, filepath.Join(home, "models", "model.bin"))
+	}
+
+	if got := ExpandPath("/tmp/../tmp/model.bin"); got != "/tmp/model.bin" {
+		t.Errorf("ExpandPath('/tmp/../tmp/model.bin') = %q, want '/tmp/model.bin'", got)
+	}
+
+	// existing relative paths resolve against cwd
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "model.bin"), []byte("x"), 0644); err != nil {
+		t.Fatalf("write model: %v", err)
+	}
+
+	oldCwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldCwd)
+	}()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+
+	if got := ExpandPath("model.bin"); got != filepath.Join(cwd, "model.bin") {
+		t.Errorf("ExpandPath('model.bin') = %q, want %q", got, filepath.Join(cwd, "model.bin"))
+	}
+
+	// missing relative paths still anchor to cwd
+	if got := ExpandPath("missing.bin"); got != filepath.Join(cwd, "missing.bin") {
+		t.Errorf("ExpandPath('missing.bin') = %q, want %q", got, filepath.Join(cwd, "missing.bin"))
+	}
+}
+
+func TestLoadResolvesModelPaths(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "models"), 0755); err != nil {
+		t.Fatalf("mkdir models: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "models", "ggml-small.en.bin"), []byte("x"), 0644); err != nil {
+		t.Fatalf("write model: %v", err)
+	}
+
+	cfgPath := filepath.Join(dir, "config.json")
+	data := []byte(`{"server": {"model": "models/ggml-small.en.bin", "vosk_model": "models/vosk"}}`)
+	if err := os.WriteFile(cfgPath, data, 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	oldCwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(oldCwd)
+	}()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if want := filepath.Join(cwd, "models", "ggml-small.en.bin"); cfg.Server.Model != want {
+		t.Errorf("Server.Model = %q, want %q", cfg.Server.Model, want)
+	}
+	if want := filepath.Join(cwd, "models", "vosk"); cfg.Server.VoskModel != want {
+		t.Errorf("Server.VoskModel = %q, want %q", cfg.Server.VoskModel, want)
 	}
 }
 

@@ -182,6 +182,8 @@ Optional config at `~/.config/yapatype/config.json`:
 }
 ```
 
+Model paths (`model`, `vosk_model`) may be absolute, start with `~`, or be relative. Relative paths resolve against the working directory, then the directory containing the yapatype binary, then the config directory. So `"model": "models/ggml-small.en.bin"` works from any directory as long as the model lives next to the binary (for example, in a repo checkout).
+
 ## Development
 
 ```bash
