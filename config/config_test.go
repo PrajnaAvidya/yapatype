@@ -16,8 +16,8 @@ func TestDefaultValues(t *testing.T) {
 	if cfg.Server.Port != 9999 {
 		t.Errorf("Server.Port = %d, want 9999", cfg.Server.Port)
 	}
-	if cfg.Server.Model != "models/ggml-tiny.en.bin" {
-		t.Errorf("Server.Model = %q, want 'models/ggml-tiny.en.bin'", cfg.Server.Model)
+	if cfg.Server.Model != "models/ggml-small.en.bin" {
+		t.Errorf("Server.Model = %q, want 'models/ggml-small.en.bin'", cfg.Server.Model)
 	}
 	if cfg.Server.VoskModel != "models/vosk-model-small-en-us" {
 		t.Errorf("Server.VoskModel = %q, want 'models/vosk-model-small-en-us'", cfg.Server.VoskModel)

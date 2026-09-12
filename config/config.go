@@ -59,7 +59,7 @@ func DefaultServer() ServerConfig {
 		Host:       "0.0.0.0",
 		Port:       9999,
 		WhisperCLI: nil, // auto-detect
-		Model:      "models/ggml-tiny.en.bin",
+		Model:      "models/ggml-small.en.bin", // matches `make setup` default (WHISPER_MODEL=small)
 		VoskModel:  "models/vosk-model-small-en-us",
 		Sounds:     DefaultSounds(),
 		Aliases:    make(map[string]string),

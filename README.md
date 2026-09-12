@@ -86,6 +86,10 @@ make setup WHISPER_MODEL=small
 | small.en | 466MB | Recommended |
 | medium.en | 1.5GB | Best accuracy, slower |
 
+The default config expects the `small` model at `models/ggml-small.en.bin`, which is what `make setup` installs. You only need to set `model` in your config (or pass a flag) if you downloaded a different size, e.g. `make setup-whisper WHISPER_MODEL=base`.
+
+> If the model file at the configured path is missing, whisper-cli can't initialize and every clip fails with `transcription error: exit status 3` followed by `no speech detected`. Run `make setup-whisper` (or point `model` at the file you actually have).
+
 **Vosk** enables fast command recognition for short utterances (<1.2s). Without vosk, all transcription uses whisper (slightly slower for commands but works fine).
 
 ## Usage
