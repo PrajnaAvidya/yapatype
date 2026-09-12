@@ -59,7 +59,7 @@ func DefaultServer() ServerConfig {
 		Host:       "0.0.0.0",
 		Port:       9999,
 		WhisperCLI: nil, // auto-detect
-		Model:      "models/ggml-tiny.en.bin",
+		Model:      "models/ggml-small.en.bin", // matches `make setup` default (WHISPER_MODEL=small)
 		VoskModel:  "models/vosk-model-small-en-us",
 		Sounds:     DefaultSounds(),
 		Aliases:    make(map[string]string),
@@ -132,6 +132,10 @@ func Load(path string) (*Config, error) {
 
 // applyDefaults applies auto-detection and auto-generation after loading
 func (c *Config) applyDefaults() {
+	// resolve model paths so they work from any working directory
+	c.Server.Model = ExpandPath(c.Server.Model)
+	c.Server.VoskModel = ExpandPath(c.Server.VoskModel)
+
 	// auto-detect whisper-cli
 	if c.Server.WhisperCLI == nil {
 		cli := detectWhisperCLI()
